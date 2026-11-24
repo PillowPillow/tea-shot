@@ -8,6 +8,7 @@ final class AppSettings {
     var preventSystemSleep: Bool { didSet { defaults.set(preventSystemSleep, forKey: Key.preventSystemSleep) } }
     var showRemainingTime: Bool { didSet { defaults.set(showRemainingTime, forKey: Key.showRemainingTime) } }
     var offerExtendInReminder: Bool { didSet { defaults.set(offerExtendInReminder, forKey: Key.offerExtendInReminder) } }
+    var language: AppLanguage { didSet { defaults.set(language.rawValue, forKey: Key.language) } }
     /// What ⌘E starts; `nil` means no limit.
     var defaultDuration: Duration? { didSet { defaults.set(Self.seconds(defaultDuration), forKey: Key.defaultDuration) } }
     /// How long before the end the reminder fires; `.zero` disables it.
@@ -25,6 +26,7 @@ final class AppSettings {
             Key.offerExtendInReminder: true,
             Key.defaultDuration: 0,
             Key.reminderLead: 300,
+            Key.language: AppLanguage.system.rawValue,
         ])
         keepDisplayAwake = defaults.bool(forKey: Key.keepDisplayAwake)
         keepDiskAwake = defaults.bool(forKey: Key.keepDiskAwake)
@@ -34,6 +36,7 @@ final class AppSettings {
         let duration = defaults.integer(forKey: Key.defaultDuration)
         defaultDuration = duration > 0 ? .seconds(duration) : nil
         reminderLead = .seconds(defaults.integer(forKey: Key.reminderLead))
+        language = defaults.string(forKey: Key.language).flatMap(AppLanguage.init(rawValue:)) ?? .system
     }
 
     var assertionKinds: Set<PowerAssertionKind> {
@@ -56,5 +59,6 @@ final class AppSettings {
         static let offerExtendInReminder = "offerExtendInReminder"
         static let defaultDuration = "defaultDurationSeconds"
         static let reminderLead = "reminderLeadSeconds"
+        static let language = "language"
     }
 }

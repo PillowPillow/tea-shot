@@ -138,10 +138,13 @@
 				};
 			};
 			buildConfigurationList = 7EA500000000000000000004 /* Build configuration list for PBXProject "TeaShot" */;
-			developmentRegion = fr;
+			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				en,
 				fr,
+				it,
+				es,
 				Base,
 			);
 			mainGroup = 7EA500000000000000000002;

@@ -6,23 +6,23 @@ nonisolated struct StatusText: Equatable {
     let subtitle: String?
     let spoken: String
 
-    init(isActive: Bool, remaining: Duration?, endDate: Date?, startDate: Date?) {
+    init(isActive: Bool, remaining: Duration?, endDate: Date?, startDate: Date?, in localization: Localization) {
         guard isActive else {
-            title = "Veille normale"
+            title = localization("Normal sleep")
             subtitle = nil
-            spoken = "Veille normale, le Mac peut se mettre en veille"
+            spoken = localization("Normal sleep, the Mac can go to sleep")
             return
         }
         if let remaining, let endDate {
-            let until = "jusqu'à \(RemainingFormat.clock(endDate))"
-            title = "Éveillé, encore \(RemainingFormat.spoken(remaining))"
+            let until = localization("until \(RemainingFormat.clock(endDate, in: localization))")
+            title = localization("Awake, \(RemainingFormat.spoken(remaining, in: localization)) left")
             subtitle = until
-            spoken = "Éveillé encore \(RemainingFormat.accessible(remaining)), \(until)"
+            spoken = localization("Awake for another \(RemainingFormat.accessible(remaining, in: localization)), \(until)")
         } else {
-            let since = startDate.map { "depuis \(RemainingFormat.clock($0))" }
-            title = "Éveillé, sans limite"
+            let since = startDate.map { localization("since \(RemainingFormat.clock($0, in: localization))") }
+            title = localization("Awake, no limit")
             subtitle = since
-            spoken = ["Éveillé sans limite", since].compactMap(\.self).joined(separator: ", ")
+            spoken = [localization("Awake with no limit"), since].compactMap(\.self).joined(separator: ", ")
         }
     }
 }

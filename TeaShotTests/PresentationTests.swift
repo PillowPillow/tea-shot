@@ -23,6 +23,9 @@ struct CupLevelTests {
     }
 }
 
+private let french = Localization(.french)
+private let english = Localization(.english)
+
 struct RemainingFormatTests {
     nonisolated private static let compactCases: [(Duration, String)] = [
         (.seconds(4980), "1:23"),
@@ -46,28 +49,32 @@ struct RemainingFormatTests {
 
     @Test(arguments: spokenCases)
     func spokenReadsNaturally(remaining: Duration, expected: String) {
-        #expect(RemainingFormat.spoken(remaining) == expected)
+        #expect(RemainingFormat.spoken(remaining, in: french) == expected)
     }
 }
 
 struct AccessibleRemainingTests {
     @Test func spellsUnitsOut() {
-        let spoken = RemainingFormat.accessible(.seconds(83 * 60))
+        let spoken = RemainingFormat.accessible(.seconds(83 * 60), in: french)
         #expect(!spoken.contains(" h "))
         #expect(spoken.contains("23"))
     }
 
-    @Test func followsTheFrenchInterface() {
-        #expect(RemainingFormat.preset(.seconds(7200)) == "2\u{A0}heures")
+    @Test(arguments: [
+        (AppLanguage.english, "2 hours"), (.french, "2\u{A0}heures"), (.italian, "2 ore"), (.spanish, "2 horas"),
+    ])
+    func followsTheInterfaceLanguage(language: AppLanguage, expected: String) {
+        #expect(RemainingFormat.preset(.seconds(7200), in: Localization(language)) == expected)
     }
 
     @Test func clockUsesTheFrenchTwentyFourHourFormat() throws {
         let afternoon = try #require(Calendar.current.date(from: DateComponents(year: 2026, month: 1, day: 2, hour: 14, minute: 5)))
-        #expect(RemainingFormat.clock(afternoon) == "14:05")
+        #expect(RemainingFormat.clock(afternoon, in: french) == "14:05")
     }
 
     @Test func roundsUpLikeTheVisibleText() {
-        #expect(RemainingFormat.accessible(.seconds(83 * 60 - 20)) == RemainingFormat.accessible(.seconds(83 * 60)))
+        #expect(
+            RemainingFormat.accessible(.seconds(83 * 60 - 20), in: french) == RemainingFormat.accessible(.seconds(83 * 60), in: french))
     }
 }
 
@@ -75,26 +82,65 @@ struct StatusTextTests {
     private let start = Date(timeIntervalSinceReferenceDate: 0)
 
     @Test func atRest() {
-        let status = StatusText(isActive: false, remaining: nil, endDate: nil, startDate: nil)
+        let status = StatusText(isActive: false, remaining: nil, endDate: nil, startDate: nil, in: french)
         #expect(status.title == "Veille normale")
         #expect(status.subtitle == nil)
         #expect(status.spoken == "Veille normale, le Mac peut se mettre en veille")
     }
 
     @Test func awakeWithoutLimit() {
-        let status = StatusText(isActive: true, remaining: nil, endDate: nil, startDate: start)
+        let status = StatusText(isActive: true, remaining: nil, endDate: nil, startDate: start, in: french)
+        let since = RemainingFormat.clock(start, in: french)
         #expect(status.title == "Éveillé, sans limite")
-        #expect(status.subtitle == "depuis \(RemainingFormat.clock(start))")
-        #expect(status.spoken == "Éveillé sans limite, depuis \(RemainingFormat.clock(start))")
+        #expect(status.subtitle == "depuis \(since)")
+        #expect(status.spoken == "Éveillé sans limite, depuis \(since)")
     }
 
     @Test func timedSpeaksUnitsInFull() {
         let end = start.addingTimeInterval(83 * 60)
-        let status = StatusText(isActive: true, remaining: .seconds(83 * 60), endDate: end, startDate: start)
-        let until = RemainingFormat.clock(end)
+        let status = StatusText(isActive: true, remaining: .seconds(83 * 60), endDate: end, startDate: start, in: french)
+        let until = RemainingFormat.clock(end, in: french)
         #expect(status.title == "Éveillé, encore 1 h 23")
         #expect(status.subtitle == "jusqu'à \(until)")
-        #expect(status.spoken == "Éveillé encore \(RemainingFormat.accessible(.seconds(83 * 60))), jusqu'à \(until)")
+        #expect(status.spoken == "Éveillé encore \(RemainingFormat.accessible(.seconds(83 * 60), in: french)), jusqu'à \(until)")
+    }
+
+    @Test func timedInEnglish() {
+        let end = start.addingTimeInterval(83 * 60)
+        let status = StatusText(isActive: true, remaining: .seconds(83 * 60), endDate: end, startDate: start, in: english)
+        let until = RemainingFormat.clock(end, in: english)
+        #expect(status.title == "Awake, 1 h 23 left")
+        #expect(status.subtitle == "until \(until)")
+        #expect(status.spoken == "Awake for another 1 hour, 23 minutes, until \(until)")
+    }
+}
+
+struct LocalizationTests {
+    @Test(arguments: [
+        (AppLanguage.english, "Stop"), (.french, "Arrêter"), (.italian, "Interrompi"), (.spanish, "Detener"),
+    ])
+    func translatesIntoTheChosenLanguage(language: AppLanguage, expected: String) {
+        #expect(Localization(language)("Stop") == expected)
+    }
+
+    @Test func systemFollowsTheAppLocalization() {
+        let code = Bundle.main.preferredLocalizations.first
+        #expect(Localization(.system).locale.language.languageCode?.identifier == code)
+    }
+
+    @Test func keepsTheUserRegion() {
+        #expect(Localization(.english).locale.region == Locale.current.region)
+    }
+
+    @Test func interpolatesTypedArguments() {
+        let error = PowerAssertionError(kind: .preventDiskIdle, code: -536_870_212)
+        #expect(error.message(in: Localization(.italian)) == "Impossibile creare l'asserzione PreventDiskIdle (codice -536870212).")
+    }
+
+    @Test func everyLanguageNamesItself() {
+        let named = AppLanguage.allCases.filter { $0 != .system }
+        #expect(named.allSatisfy { $0.nativeName != nil })
+        #expect(AppLanguage.system.nativeName == nil)
     }
 }
 
@@ -135,6 +181,7 @@ struct AppSettingsTests {
         #expect(settings.defaultDuration == nil)
         #expect(settings.reminderLead == .seconds(300))
         #expect(settings.offerExtendInReminder)
+        #expect(settings.language == .system)
         #expect(settings.assertionKinds == Set(PowerAssertionKind.allCases))
     }
 
@@ -153,11 +200,13 @@ struct AppSettingsTests {
         first.keepDisplayAwake = false
         first.defaultDuration = .seconds(7200)
         first.reminderLead = .zero
+        first.language = .italian
 
         let second = AppSettings(defaults: defaults)
 
         #expect(!second.keepDisplayAwake)
         #expect(second.defaultDuration == .seconds(7200))
         #expect(second.reminderLead == .zero)
+        #expect(second.language == .italian)
     }
 }

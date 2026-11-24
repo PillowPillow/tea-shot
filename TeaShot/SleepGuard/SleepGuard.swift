@@ -24,7 +24,7 @@ final class SleepGuard {
     init(
         refreshInterval: Duration = .seconds(30),
         makeAssertion: @escaping (PowerAssertionKind) throws(PowerAssertionError) -> PowerAssertion = {
-            try PowerAssertion($0, reason: "TeaShot garde le Mac éveillé")
+            try PowerAssertion($0, reason: "TeaShot keeps the Mac awake")
         }
     ) {
         self.refreshInterval = refreshInterval

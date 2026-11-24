@@ -1,20 +1,18 @@
 import SwiftUI
 
-/// The Réglages window: native toolbar tabs hosting the SwiftUI forms.
+/// The Settings window: native toolbar tabs hosting the SwiftUI forms.
 final class SettingsWindowController: NSWindowController {
+    private let settings: AppSettings
     private let launchAtLogin: LaunchAtLogin
+    private let tabs = NSTabViewController()
 
     init(model: AppModel) {
+        settings = model.settings
         launchAtLogin = model.launchAtLogin
-        let tabs = NSTabViewController()
         tabs.tabStyle = .toolbar
         tabs.addTabViewItem(
-            Self.tab(
-                GeneralSettings(settings: model.settings, launchAtLogin: model.launchAtLogin),
-                label: "Général",
-                symbol: "gearshape"
-            ))
-        tabs.addTabViewItem(Self.tab(AboutView(), label: "À propos", symbol: "info.circle"))
+            Self.tab(GeneralSettings(settings: model.settings, launchAtLogin: model.launchAtLogin), symbol: "gearshape"))
+        tabs.addTabViewItem(Self.tab(AboutView(settings: model.settings), symbol: "info.circle"))
 
         let window = NSWindow(contentViewController: tabs)
         window.styleMask = [.titled, .closable]
@@ -22,6 +20,7 @@ final class SettingsWindowController: NSWindowController {
         window.isReleasedWhenClosed = false
         window.center()
         super.init(window: window)
+        localizeTabs()
     }
 
     @available(*, unavailable)
@@ -36,12 +35,24 @@ final class SettingsWindowController: NSWindowController {
         window?.makeKeyAndOrderFront(nil)
     }
 
-    private static func tab(_ view: some View, label: String, symbol: String) -> NSTabViewItem {
+    private func localizeTabs() {
+        withObservationTracking {
+            let localization = Localization(settings.language)
+            let labels = [localization("General"), localization("About")]
+            for (item, label) in zip(tabs.tabViewItems, labels) {
+                item.label = label
+                item.viewController?.title = label
+            }
+            window?.title = labels[max(0, tabs.selectedTabViewItemIndex)]
+        } onChange: { [weak self] in
+            Task { @MainActor in self?.localizeTabs() }
+        }
+    }
+
+    private static func tab(_ view: some View, symbol: String) -> NSTabViewItem {
         let host = NSHostingController(rootView: view.frame(width: 520))
         host.sizingOptions = .preferredContentSize
-        host.title = label
         let item = NSTabViewItem(viewController: host)
-        item.label = label
         item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
         return item
     }
@@ -54,63 +65,78 @@ private struct GeneralSettings: View {
     private static let reminderLeads: [Duration] = [60, 5 * 60, 10 * 60].map(Duration.seconds)
 
     var body: some View {
+        let localization = Localization(settings.language)
         Form {
-            Section("Démarrage") {
+            Section(localization("Startup")) {
                 Toggle(
-                    "Lancer à l'ouverture de session",
+                    localization("Launch at login"),
                     isOn: Binding(
                         get: { launchAtLogin.isEnabled },
                         set: { launchAtLogin.setEnabled($0) }
                     ))
                 Picker(selection: $settings.defaultDuration) {
-                    Text("Sans limite").tag(Duration?.none)
+                    Text(localization("No Limit")).tag(Duration?.none)
                     ForEach(SleepGuard.presets, id: \.self) { preset in
-                        Text(RemainingFormat.preset(preset)).tag(Duration?.some(preset))
+                        Text(RemainingFormat.preset(preset, in: localization)).tag(Duration?.some(preset))
                     }
                 } label: {
-                    Text("Durée de ⌘E")
-                    Text("Ce que lance le raccourci et l'action principale du menu")
+                    Text(localization("⌘E duration"))
+                    Text(localization("What the shortcut and the main menu action start"))
                 }
             }
 
-            Section("Barre des menus") {
-                Toggle("Afficher le temps restant à côté de l'icône", isOn: $settings.showRemainingTime)
+            Section(localization("Menu bar")) {
+                Toggle(localization("Show the remaining time next to the icon"), isOn: $settings.showRemainingTime)
             }
 
-            Section("Quand TeaShot est actif") {
+            Section(localization("While TeaShot is active")) {
                 Toggle(isOn: $settings.keepDisplayAwake) {
-                    Text("Garder l'écran allumé")
-                    Text("caffeinate -d")
+                    Text(localization("Keep the display on"))
+                    Text(verbatim: "caffeinate -d")
                 }
                 Toggle(isOn: $settings.keepDiskAwake) {
-                    Text("Garder le disque actif")
-                    Text("caffeinate -m")
+                    Text(localization("Keep the disk awake"))
+                    Text(verbatim: "caffeinate -m")
                 }
                 Toggle(isOn: $settings.preventSystemSleep) {
-                    Text("Bloquer la veille système sur secteur")
-                    Text("caffeinate -s · ignoré par macOS sur batterie")
+                    Text(localization("Block system sleep on AC power"))
+                    Text(localization("caffeinate -s · ignored by macOS on battery"))
                 }
             }
 
-            Section("Fin du minuteur") {
-                Picker("Prévenir avant la fin", selection: $settings.reminderLead) {
-                    Text("Jamais").tag(Duration.zero)
+            Section(localization("Timer end")) {
+                Picker(localization("Notify before the end"), selection: $settings.reminderLead) {
+                    Text(localization("Never")).tag(Duration.zero)
                     ForEach(Self.reminderLeads, id: \.self) { lead in
-                        Text("\(RemainingFormat.spoken(lead)) avant")
-                            .accessibilityLabel("\(RemainingFormat.accessible(lead)) avant")
+                        Text(localization("\(RemainingFormat.spoken(lead, in: localization)) before"))
+                            .accessibilityLabel(localization("\(RemainingFormat.accessible(lead, in: localization)) before"))
                             .tag(lead)
                     }
                 }
-                Toggle("Proposer « Prolonger de 30 min » dans la notification", isOn: $settings.offerExtendInReminder)
-                    .disabled(settings.reminderLead == .zero)
+                Toggle(
+                    localization("Offer “\(localization("Extend by 30 min"))” in the notification"),
+                    isOn: $settings.offerExtendInReminder
+                )
+                .disabled(settings.reminderLead == .zero)
+            }
+
+            Section {
+                Picker(localization("Language"), selection: $settings.language) {
+                    ForEach(AppLanguage.allCases, id: \.self) { language in
+                        Text(language.nativeName ?? localization("System language")).tag(language)
+                    }
+                }
             }
         }
         .formStyle(.grouped)
         .fixedSize(horizontal: false, vertical: true)
+        .environment(\.locale, localization.locale)
     }
 }
 
 private struct AboutView: View {
+    let settings: AppSettings
+
     private var version: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
     }
@@ -120,16 +146,17 @@ private struct AboutView: View {
     }
 
     var body: some View {
+        let localization = Localization(settings.language)
         VStack(spacing: 10) {
             Image(nsImage: NSApplication.shared.applicationIconImage)
                 .resizable()
                 .frame(width: 96, height: 96)
                 .accessibilityHidden(true)
-            Text("TeaShot")
+            Text(verbatim: "TeaShot")
                 .font(.title2.weight(.semibold))
-            Text("Version \(version)")
+            Text(localization("Version \(version)"))
                 .foregroundStyle(.secondary)
-            Text("Garde le Mac éveillé pendant que vos agents travaillent.")
+            Text(localization("Keeps your Mac awake while your agents work."))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
             if let copyright {

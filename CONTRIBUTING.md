@@ -24,7 +24,11 @@ Open `TeaShot.xcodeproj` in Xcode, or use the Makefile targets listed in the [RE
 - Keep each pull request focused on one change.
 - Add or update tests in `TeaShotTests/` for any behaviour change. The suite uses Swift Testing.
 - Run `make format`, then `make lint` and `make test`. CI runs the last two on every pull request.
-- Interface text is in French for now. If you add a string, keep it in French; localizations are welcome as separate pull requests.
+- Write interface text in English and pass it through `Localization` (for example `localization("Stop")`), so the language setting applies without a relaunch. Add its French, Italian and Spanish translations to `TeaShot/Localizable.xcstrings`.
 - Check the change with VoiceOver when it touches the menu or Settings.
+
+## Translations
+
+TeaShot is translated into English, French, Italian and Spanish. To add a language, translate every string in `TeaShot/Localizable.xcstrings`, add the language to `AppLanguage` in `TeaShot/Shared/Localization.swift` and to `knownRegions` in the Xcode project, and extend the localization tests in `TeaShotTests/`. Corrections from native speakers are welcome.
 
 By contributing, you agree that your contribution is licensed under the [GNU GPL v3.0](LICENSE).

@@ -42,6 +42,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.removeAllItems()
         let sleepGuard = model.sleepGuard
         let status = model.status
+        let localization = model.localization
 
         menu.addItem(.sectionHeader(title: "TeaShot"))
         let statusLine = NSMenuItem(title: status.title, action: nil, keyEquivalent: "")
@@ -49,7 +50,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         statusLine.isEnabled = false
         menu.addItem(statusLine)
         if let failure = sleepGuard.failure {
-            let failureLine = NSMenuItem(title: failure.localizedDescription, action: nil, keyEquivalent: "")
+            let failureLine = NSMenuItem(title: failure.message(in: localization), action: nil, keyEquivalent: "")
             failureLine.isEnabled = false
             menu.addItem(failureLine)
         }
@@ -57,39 +58,39 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
 
         if model.isTimed {
-            menu.addItem(actionItem("Prolonger de 30 min", symbol: "plus", key: "+") { [model] in model.extend() })
+            menu.addItem(actionItem(localization("Extend by 30 min"), symbol: "plus", key: "+") { [model] in model.extend() })
         }
         if sleepGuard.isActive {
-            menu.addItem(actionItem("Arrêter", symbol: "stop", key: "e") { [model] in model.toggle() })
+            menu.addItem(actionItem(localization("Stop"), symbol: "stop", key: "e") { [model] in model.toggle() })
         } else {
-            menu.addItem(actionItem("Garder éveillé", symbol: "cup.and.saucer", key: "e") { [model] in model.toggle() })
+            menu.addItem(actionItem(localization("Keep Awake"), symbol: "cup.and.saucer", key: "e") { [model] in model.toggle() })
         }
-        menu.addItem(durationMenu())
+        menu.addItem(durationMenu(localization))
 
         menu.addItem(.separator())
 
-        menu.addItem(actionItem("Réglages…", symbol: "gearshape", key: ",") { [weak self] in self?.settingsWindow.present() })
-        menu.addItem(actionItem("Quitter TeaShot", symbol: "power", key: "q") { NSApp.terminate(nil) })
+        menu.addItem(actionItem(localization("Settings…"), symbol: "gearshape", key: ",") { [weak self] in self?.settingsWindow.present() })
+        menu.addItem(actionItem(localization("Quit TeaShot"), symbol: "power", key: "q") { NSApp.terminate(nil) })
     }
 
-    private func durationMenu() -> NSMenuItem {
+    private func durationMenu(_ localization: Localization) -> NSMenuItem {
         let title: String
         if model.isTimed {
-            title = "Changer la durée"
+            title = localization("Change Duration")
         } else {
-            title = model.sleepGuard.isActive ? "Limiter la durée" : "Garder éveillé pendant"
+            title = model.sleepGuard.isActive ? localization("Limit Duration") : localization("Keep Awake For")
         }
         let parent = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         parent.image = NSImage(systemSymbolName: "timer", accessibilityDescription: nil)
 
         let submenu = NSMenu()
         for preset in SleepGuard.presets {
-            let item = actionItem(RemainingFormat.preset(preset)) { [model] in model.start(preset) }
+            let item = actionItem(RemainingFormat.preset(preset, in: localization)) { [model] in model.start(preset) }
             item.state = model.isTimed && model.chosenPreset == preset ? .on : .off
             submenu.addItem(item)
         }
         submenu.addItem(.separator())
-        let unlimited = actionItem("Sans limite") { [model] in model.start(nil) }
+        let unlimited = actionItem(localization("No Limit")) { [model] in model.start(nil) }
         unlimited.state = model.sleepGuard.isActive && !model.isTimed ? .on : .off
         submenu.addItem(unlimited)
 

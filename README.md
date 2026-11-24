@@ -14,7 +14,7 @@
 **TeaShot keeps your Mac awake from the menu bar.** It does what `caffeinate -dims` does, with a click instead of a terminal, and without touching your Energy or Battery settings. It was built for people who leave AI coding agents such as Claude Code or Codex running for hours: the Mac must not fall asleep in the middle of a task.
 
 <p align="center">
-  <img src="docs/screenshots/menu.png" width="469" alt="The TeaShot menu with a two-hour timer running and the duration submenu open">
+  <img src="docs/screenshots/menu.png" width="447" alt="The TeaShot menu with a two-hour timer running and the duration submenu open">
 </p>
 
 ## Install
@@ -64,11 +64,12 @@ make install
 
 ## Features
 
-- **Awake with no limit, or for a set time.** Click the cup and choose **Garder éveillé** (keep awake, <kbd>⌘E</kbd> while the menu is open), or pick 30 minutes, 1, 2, 4, 8 or 12 hours. You choose what it starts in Settings.
-- **Extend or stop at any time.** **Prolonger de 30 min** (extend by 30 min, <kbd>⌘+</kbd> in the menu) adds time to the running timer.
+- **Awake with no limit, or for a set time.** Click the cup and choose **Keep Awake** (<kbd>⌘E</kbd> while the menu is open), or pick 30 minutes, 1, 2, 4, 8 or 12 hours. You choose what it starts in Settings.
+- **Extend or stop at any time.** **Extend by 30 min** (<kbd>⌘+</kbd> in the menu) adds time to the running timer.
 - **A cup that drains.** The menu bar icon is a glass shot cup of green tea. It empties in five steps as the timer runs out, with the remaining time next to it. You can turn the time off.
-- **A reminder before the end.** An optional notification arrives 1, 5 or 10 minutes before the timer ends, with a **Prolonger de 30 min** (extend by 30 min) button.
+- **A reminder before the end.** An optional notification arrives 1, 5 or 10 minutes before the timer ends, with an **Extend by 30 min** button.
 - **Launch at login**, if you want TeaShot always at hand.
+- **In your language.** TeaShot speaks English, French, Italian and Spanish. It follows the system language; pick another one in Settings and the menu and Settings switch at once.
 
 <p align="center">
   <picture>
@@ -79,10 +80,10 @@ make install
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/settings.png" width="632" alt="The TeaShot Settings window: launch at login, default duration, menu bar, sleep options and end-of-timer reminder">
+  <img src="docs/screenshots/settings.png" width="632" alt="The TeaShot Settings window: launch at login, default duration, menu bar, sleep options, end-of-timer reminder and language">
 </p>
 
-> The interface is in French only for now. Localization contributions are welcome.
+> To add a language, see [CONTRIBUTING.md](CONTRIBUTING.md#translations).
 
 ## How it works
 
@@ -91,9 +92,9 @@ TeaShot creates the same IOKit power assertions as `caffeinate`, directly, with 
 | Assertion | `caffeinate` flag | Setting |
 | --- | --- | --- |
 | `PreventUserIdleSystemSleep` | `-i` | Always on |
-| `PreventUserIdleDisplaySleep` | `-d` | Garder l'écran allumé (keep display on) |
-| `PreventDiskIdle` | `-m` | Garder le disque actif (keep disk awake) |
-| `PreventSystemSleep` | `-s` | Bloquer la veille système sur secteur (block system sleep on AC power) |
+| `PreventUserIdleDisplaySleep` | `-d` | Keep the display on |
+| `PreventDiskIdle` | `-m` | Keep the disk awake |
+| `PreventSystemSleep` | `-s` | Block system sleep on AC power |
 
 macOS releases the assertions automatically if TeaShot quits or crashes, so your Mac never stays stuck awake. To see them for yourself:
 
@@ -103,7 +104,7 @@ pmset -g assertions | grep -A1 TeaShot
 
 ## Accessibility
 
-- VoiceOver reads the full state on the menu bar item, for example "TeaShot, awake for 2 more hours, until 12:43" (in French in the app). Durations are spelled out, and the state never depends on the cup drawing alone.
+- VoiceOver reads the full state on the menu bar item in the interface language, for example "TeaShot, Awake for another 2 hours, until 12:43". Durations are spelled out, and the state never depends on the cup drawing alone.
 - The menu is a native `NSMenu` and Settings is a SwiftUI `Form`, so the keyboard and VoiceOver work as they do in the rest of macOS.
 - The accent colour has variants for Dark Mode and for Increase Contrast.
 
@@ -142,7 +143,9 @@ TeaShot is a native Swift 6 app (AppKit and SwiftUI), built as a universal binar
 | `MenuBar/` | `StatusItemController` (AppKit menu bar item and menu), `CupGlyph`, `StatusText` |
 | `Settings/` | `AppSettings` (UserDefaults), `LaunchAtLogin` (`SMAppService`), `SettingsWindowController` (SwiftUI forms) |
 | `Reminder/` | `TimerReminder` (end-of-timer notification) |
-| `Shared/` | `RemainingFormat` (durations and times) |
+| `Shared/` | `Localization` (interface language, switchable at runtime), `RemainingFormat` (durations and times) |
+
+**Strings.** Interface text lives in `TeaShot/Localizable.xcstrings`, with English as the source language.
 
 **Adding files.** The project uses synchronized folders: a file added under `TeaShot/` or `TeaShotTests/` compiles without a change to the `.xcodeproj`.
 
