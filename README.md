@@ -160,4 +160,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) to propose a change and [SECURITY.md](SEC
 
 ## License
 
-Copyright © 2026 PillowPillow. TeaShot is free software released under the GNU General Public License v3.0 — see [LICENSE](LICENSE).
+Copyright © 2026 Nicolas Gaignoux. TeaShot is free software released under the GNU General Public License v3.0 — see [LICENSE](LICENSE).

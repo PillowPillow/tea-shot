@@ -115,6 +115,10 @@ private struct AboutView: View {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
     }
 
+    private var copyright: String? {
+        Bundle.main.object(forInfoDictionaryKey: "NSHumanReadableCopyright") as? String
+    }
+
     var body: some View {
         VStack(spacing: 10) {
             Image(nsImage: NSApplication.shared.applicationIconImage)
@@ -128,6 +132,11 @@ private struct AboutView: View {
             Text("Garde le Mac éveillé pendant que vos agents travaillent.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
+            if let copyright {
+                Text(copyright)
+                    .font(.footnote)
+                    .foregroundStyle(.tertiary)
+            }
         }
         .padding(32)
         .frame(maxWidth: .infinity)
