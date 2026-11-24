@@ -20,10 +20,6 @@ final class TimerReminder: NSObject, UNUserNotificationCenterDelegate {
     override init() {
         super.init()
         center.delegate = self
-        let extend = UNNotificationAction(identifier: Self.extendAction, title: "Prolonger de 30 min")
-        center.setNotificationCategories([
-            UNNotificationCategory(identifier: Self.category, actions: [extend], intentIdentifiers: [])
-        ])
         // Clears reminders left by a crash, unless another copy sharing the bundle ID (or the test host) still owns them.
         let bundleID = Bundle.main.bundleIdentifier ?? ""
         if NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).count <= 1 {
@@ -38,15 +34,19 @@ final class TimerReminder: NSObject, UNUserNotificationCenterDelegate {
         return fire > now ? fire : nil
     }
 
-    func schedule(end: Date?, lead: Duration, offerExtend: Bool) {
+    func schedule(end: Date?, lead: Duration, offerExtend: Bool, in localization: Localization) {
         // A delivered reminder stays valid while the end date holds; only a new end date makes it stale.
         withdraw(delivered: end != scheduledEnd)
         scheduledEnd = end
         guard let end, let fire = Self.fireDate(end: end, lead: lead) else { return }
 
+        let extend = UNNotificationAction(identifier: Self.extendAction, title: localization("Extend by 30 min"))
+        center.setNotificationCategories([
+            UNNotificationCategory(identifier: Self.category, actions: [extend], intentIdentifiers: [])
+        ])
         let content = UNMutableNotificationContent()
         content.title = "TeaShot"
-        content.body = "Le Mac pourra se mettre en veille dans \(RemainingFormat.spoken(lead))."
+        content.body = localization("The Mac can go to sleep in \(RemainingFormat.spoken(lead, in: localization)).")
         if offerExtend { content.categoryIdentifier = Self.category }
 
         let scheduled = generation

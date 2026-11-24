@@ -31,12 +31,15 @@ final class AppModel {
 
     var isTimed: Bool { sleepGuard.isActive && sleepGuard.endDate != nil }
 
+    var localization: Localization { Localization(settings.language) }
+
     var status: StatusText {
         StatusText(
             isActive: sleepGuard.isActive,
             remaining: isTimed ? sleepGuard.remaining : nil,
             endDate: sleepGuard.endDate,
-            startDate: sleepGuard.startDate
+            startDate: sleepGuard.startDate,
+            in: localization
         )
     }
 
@@ -82,11 +85,12 @@ final class AppModel {
         }
     }
 
-    /// The single place that schedules the reminder: it follows the timer's end date and the reminder settings.
+    /// The single place that schedules the reminder: it follows the timer's end date, the reminder settings and the language.
     private func followReminderSettings() {
         withObservationTracking {
             _ = settings.reminderLead
             _ = settings.offerExtendInReminder
+            _ = settings.language
             _ = sleepGuard.endDate
         } onChange: { [weak self] in
             Task { @MainActor in
@@ -94,7 +98,8 @@ final class AppModel {
                 self.reminder.schedule(
                     end: self.sleepGuard.endDate,
                     lead: self.settings.reminderLead,
-                    offerExtend: self.settings.offerExtendInReminder
+                    offerExtend: self.settings.offerExtendInReminder,
+                    in: self.localization
                 )
                 self.followReminderSettings()
             }

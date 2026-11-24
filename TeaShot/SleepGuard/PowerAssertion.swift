@@ -13,12 +13,12 @@ nonisolated enum PowerAssertionKind: String, CaseIterable, Sendable {
     case preventSystemSleep = "PreventSystemSleep"
 }
 
-nonisolated struct PowerAssertionError: LocalizedError, Sendable {
+nonisolated struct PowerAssertionError: Error, Sendable {
     let kind: PowerAssertionKind
     let code: IOReturn
 
-    var errorDescription: String? {
-        "Impossible de créer l'assertion \(kind.rawValue) (code \(code))."
+    func message(in localization: Localization) -> String {
+        localization("Could not create the \(kind.rawValue) assertion (code \(String(code))).")
     }
 }
 
