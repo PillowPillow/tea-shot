@@ -19,7 +19,15 @@
 
 ## Install
 
-Paste this line in Terminal:
+With [Homebrew](https://brew.sh):
+
+```sh
+brew install --cask pillowpillow/tap/teashot
+```
+
+`brew upgrade` then updates TeaShot with the rest of your packages: it quits the app, replaces it and opens it again.
+
+Without Homebrew, paste this line in Terminal:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/PillowPillow/tea-shot/main/install.sh | bash
@@ -27,7 +35,7 @@ curl -fsSL https://raw.githubusercontent.com/PillowPillow/tea-shot/main/install.
 
 It downloads the latest release, installs it in `/Applications` (or `~/Applications` if that folder is not writable) and launches it. Run the same line again to update.
 
-> **Why a script?** TeaShot is free and is not notarized by Apple, which requires a paid developer account. Files downloaded with `curl` are not quarantined, so the app opens without the Gatekeeper warning. The script is short and readable: [read `install.sh`](install.sh) before you run it. It checks that the download is complete and undamaged, and refuses to run with `sudo`. If the [GitHub CLI](https://cli.github.com) is installed and signed in, it also verifies that the zip was built by this repository's release workflow.
+> **Why not a plain download?** TeaShot is free and is not notarized by Apple, which requires a paid developer account, so macOS blocks the first launch of a copy downloaded with a browser. Both methods above avoid that warning: the Homebrew cask clears the quarantine flag after it installs the app, and files downloaded with `curl` are never quarantined. The script is short and readable: [read `install.sh`](install.sh) before you run it. It checks that the download is complete and undamaged, and refuses to run with `sudo`. If the [GitHub CLI](https://cli.github.com) is installed and signed in, it also verifies that the zip was built by this repository's release workflow.
 
 TeaShot requires macOS 14 Sonoma or later and runs on Apple silicon and Intel Macs.
 
@@ -60,7 +68,7 @@ make install
 
 </details>
 
-**Uninstall:** quit TeaShot from its menu, then delete `TeaShot.app`. From a source checkout, `make uninstall` does both.
+**Uninstall:** with Homebrew, run `brew uninstall --cask teashot`. Otherwise quit TeaShot from its menu, then delete `TeaShot.app`. From a source checkout, `make uninstall` does both.
 
 ## Features
 
@@ -157,7 +165,7 @@ swift Tools/render-app-icon.swift TeaShot/Assets.xcassets/AppIcon.appiconset/ico
 
 **README visuals.** Regenerate the images in `docs/brand/` with `swift docs/brand/render-brand.swift .`
 
-**Releases.** Pushing a tag `vX.Y.Z` triggers a GitHub Actions workflow. A read-only job runs the tests and builds the universal zip; a second job attests its provenance and publishes the GitHub release.
+**Releases.** Pushing a tag `vX.Y.Z` triggers a GitHub Actions workflow. A read-only job runs the tests and builds the universal zip; a second job attests its provenance and publishes the GitHub release; a third renders [`homebrew/teashot.rb`](homebrew/teashot.rb) with the new version and checksum and pushes it to the [Homebrew tap](https://github.com/PillowPillow/homebrew-tap).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) to propose a change and [SECURITY.md](SECURITY.md) to report a vulnerability.
 
