@@ -5,12 +5,8 @@ import Observation
 final class SleepGuard {
     static let presets: [Duration] = [30 * 60, 3_600, 2 * 3_600, 4 * 3_600, 8 * 3_600, 12 * 3_600].map(Duration.seconds)
 
-    var kinds = Set(PowerAssertionKind.allCases) {
-        didSet {
-            guard isActive, kinds != oldValue else { return }
-            holdAssertions()
-        }
-    }
+    /// The assertions held while active, or held by the next activation while at rest.
+    private(set) var kinds = Set(PowerAssertionKind.allCases)
 
     private(set) var isActive = false
     private(set) var startDate: Date?
@@ -23,9 +19,16 @@ final class SleepGuard {
     @ObservationIgnored private var assertions: [PowerAssertion] = []
     @ObservationIgnored private var countdown: Task<Void, Never>?
     @ObservationIgnored private let refreshInterval: Duration
+    @ObservationIgnored private let makeAssertion: (PowerAssertionKind) throws(PowerAssertionError) -> PowerAssertion
 
-    init(refreshInterval: Duration = .seconds(30)) {
+    init(
+        refreshInterval: Duration = .seconds(30),
+        makeAssertion: @escaping (PowerAssertionKind) throws(PowerAssertionError) -> PowerAssertion = {
+            try PowerAssertion($0, reason: "TeaShot garde le Mac éveillé")
+        }
+    ) {
         self.refreshInterval = refreshInterval
+        self.makeAssertion = makeAssertion
     }
 
     /// 1 when awake without limit, the remaining share of a timer, 0 at rest.
@@ -35,15 +38,35 @@ final class SleepGuard {
         return min(1, max(0, remaining / duration))
     }
 
-    func activate(for duration: Duration? = nil) {
-        deactivate()
-        guard holdAssertions() else { return }
+    /// Takes effect at once while active; if the new assertions fail, the current ones stay held.
+    func use(_ newKinds: Set<PowerAssertionKind>) {
+        guard isActive else {
+            kinds = newKinds
+            failure = nil
+            return
+        }
+        guard newKinds != kinds else {
+            failure = nil
+            return
+        }
+        if holdAssertions(newKinds) { kinds = newKinds }
+    }
 
+    /// Starts a new session; if the assertions cannot be held, the current session, if any, carries on unchanged.
+    func activate(for duration: Duration? = nil, holding newKinds: Set<PowerAssertionKind>? = nil) {
+        let newKinds = newKinds ?? kinds
+        guard holdAssertions(newKinds) else { return }
+
+        kinds = newKinds
+        countdown?.cancel()
+        countdown = nil
         isActive = true
         startDate = .now
+        endDate = nil
+        remaining = nil
+        self.duration = duration
         guard let duration else { return }
 
-        self.duration = duration
         startCountdown(until: Date.now.addingTimeInterval(duration.timeInterval))
     }
 
@@ -62,20 +85,17 @@ final class SleepGuard {
         endDate = nil
         duration = nil
         remaining = nil
+        failure = nil
     }
 
-    @discardableResult
-    private func holdAssertions() -> Bool {
+    private func holdAssertions(_ kinds: Set<PowerAssertionKind>) -> Bool {
         do {
             // Builds the new set before dropping the old one so the Mac is never left unguarded.
-            assertions = try kinds.map { kind throws(PowerAssertionError) in
-                try PowerAssertion(kind, reason: "TeaShot garde le Mac éveillé")
-            }
+            assertions = try kinds.map { kind throws(PowerAssertionError) in try makeAssertion(kind) }
             failure = nil
             return true
         } catch {
             failure = error
-            deactivate()
             return false
         }
     }

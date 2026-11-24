@@ -1,12 +1,16 @@
-import Observation
 import OSLog
+import Observation
 import ServiceManagement
 
 @Observable
 final class LaunchAtLogin {
     private(set) var isEnabled = SMAppService.mainApp.status == .enabled
 
-    @ObservationIgnored private let logger = Logger(subsystem: "local.teashot", category: "LaunchAtLogin")
+    @ObservationIgnored private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "TeaShot", category: "LaunchAtLogin")
+
+    func refresh() {
+        isEnabled = SMAppService.mainApp.status == .enabled
+    }
 
     func setEnabled(_ enabled: Bool) {
         let service = SMAppService.mainApp

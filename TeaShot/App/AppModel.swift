@@ -24,9 +24,9 @@ final class AppModel {
         self.sleepGuard = sleepGuard
         self.launchAtLogin = launchAtLogin
         self.reminder = reminder
-        sleepGuard.kinds = settings.assertionKinds
+        sleepGuard.use(settings.assertionKinds)
         reminder.onExtend = { [weak self] in self?.extend() }
-        followAssertionSettings()
+        followSettings()
     }
 
     var isTimed: Bool { sleepGuard.isActive && sleepGuard.endDate != nil }
@@ -49,28 +49,25 @@ final class AppModel {
     }
 
     func start(_ duration: Duration?) {
-        sleepGuard.activate(for: duration)
+        sleepGuard.activate(for: duration, holding: settings.assertionKinds)
+        guard sleepGuard.failure == nil else { return }
         chosenPreset = duration
-        rescheduleReminder()
     }
 
     func extend() {
         sleepGuard.extend(by: Self.extensionStep)
         chosenPreset = nil
-        rescheduleReminder()
     }
 
     func stop() {
         sleepGuard.deactivate()
+        // The reminder observer runs on a later turn, which never comes when the app is quitting.
         reminder.cancel()
     }
 
-    private func rescheduleReminder() {
-        reminder.schedule(
-            end: sleepGuard.endDate,
-            lead: settings.reminderLead,
-            offerExtend: settings.offerExtendInReminder
-        )
+    private func followSettings() {
+        followAssertionSettings()
+        followReminderSettings()
     }
 
     private func followAssertionSettings() {
@@ -79,8 +76,27 @@ final class AppModel {
         } onChange: { [weak self] in
             Task { @MainActor in
                 guard let self else { return }
-                self.sleepGuard.kinds = self.settings.assertionKinds
+                self.sleepGuard.use(self.settings.assertionKinds)
                 self.followAssertionSettings()
+            }
+        }
+    }
+
+    /// The single place that schedules the reminder: it follows the timer's end date and the reminder settings.
+    private func followReminderSettings() {
+        withObservationTracking {
+            _ = settings.reminderLead
+            _ = settings.offerExtendInReminder
+            _ = sleepGuard.endDate
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                self.reminder.schedule(
+                    end: self.sleepGuard.endDate,
+                    lead: self.settings.reminderLead,
+                    offerExtend: self.settings.offerExtendInReminder
+                )
+                self.followReminderSettings()
             }
         }
     }

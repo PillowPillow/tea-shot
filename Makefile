@@ -6,13 +6,21 @@ APP        := $(DERIVED)/Build/Products/Release/TeaShot.app
 ZIP        := $(DERIVED)/TeaShot.zip
 DEST       := /Applications/TeaShot.app
 
-.PHONY: build test run install uninstall zip clean
+SOURCES    := TeaShot TeaShotTests Tools docs/brand
+
+.PHONY: build test lint format run install uninstall zip clean
 
 build:
 	$(XCODEBUILD) -configuration Release -destination 'generic/platform=macOS' build
 
 test:
 	$(XCODEBUILD) -destination 'platform=macOS' test
+
+lint:
+	swift format lint --strict --recursive $(SOURCES)
+
+format:
+	swift format format --in-place --recursive $(SOURCES)
 
 run: build
 	open $(APP)

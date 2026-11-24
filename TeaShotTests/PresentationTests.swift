@@ -1,5 +1,6 @@
 import AppKit
 import Testing
+
 @testable import TeaShot
 
 struct CupLevelTests {
@@ -23,23 +24,27 @@ struct CupLevelTests {
 }
 
 struct RemainingFormatTests {
-    @Test(arguments: [
-        (Duration.seconds(83 * 60), "1:23"),
-        (.seconds(83 * 60 - 20), "1:23"),
-        (.seconds(45 * 60), "0:45"),
+    nonisolated private static let compactCases: [(Duration, String)] = [
+        (.seconds(4980), "1:23"),
+        (.seconds(4960), "1:23"),
+        (.seconds(2700), "0:45"),
         (.seconds(30), "0:01"),
-        (.seconds(12 * 3600), "12:00"),
-    ])
+        (.seconds(43_200), "12:00"),
+    ]
+
+    nonisolated private static let spokenCases: [(Duration, String)] = [
+        (.seconds(4980), "1 h 23"),
+        (.seconds(7200), "2 h 00"),
+        (.seconds(2700), "45 min"),
+        (.seconds(10), "1 min"),
+    ]
+
+    @Test(arguments: compactCases)
     func compactRoundsUpToTheMinute(remaining: Duration, expected: String) {
         #expect(RemainingFormat.compact(remaining) == expected)
     }
 
-    @Test(arguments: [
-        (Duration.seconds(83 * 60), "1 h 23"),
-        (.seconds(2 * 3600), "2 h 00"),
-        (.seconds(45 * 60), "45 min"),
-        (.seconds(10), "1 min"),
-    ])
+    @Test(arguments: spokenCases)
     func spokenReadsNaturally(remaining: Duration, expected: String) {
         #expect(RemainingFormat.spoken(remaining) == expected)
     }
@@ -50,6 +55,15 @@ struct AccessibleRemainingTests {
         let spoken = RemainingFormat.accessible(.seconds(83 * 60))
         #expect(!spoken.contains(" h "))
         #expect(spoken.contains("23"))
+    }
+
+    @Test func followsTheFrenchInterface() {
+        #expect(RemainingFormat.preset(.seconds(7200)) == "2\u{A0}heures")
+    }
+
+    @Test func clockUsesTheFrenchTwentyFourHourFormat() throws {
+        let afternoon = try #require(Calendar.current.date(from: DateComponents(year: 2026, month: 1, day: 2, hour: 14, minute: 5)))
+        #expect(RemainingFormat.clock(afternoon) == "14:05")
     }
 
     @Test func roundsUpLikeTheVisibleText() {
@@ -70,14 +84,14 @@ struct StatusTextTests {
     @Test func awakeWithoutLimit() {
         let status = StatusText(isActive: true, remaining: nil, endDate: nil, startDate: start)
         #expect(status.title == "Éveillé, sans limite")
-        #expect(status.subtitle == "depuis \(start.formatted(date: .omitted, time: .shortened))")
-        #expect(status.spoken == "Éveillé sans limite, depuis \(start.formatted(date: .omitted, time: .shortened))")
+        #expect(status.subtitle == "depuis \(RemainingFormat.clock(start))")
+        #expect(status.spoken == "Éveillé sans limite, depuis \(RemainingFormat.clock(start))")
     }
 
     @Test func timedSpeaksUnitsInFull() {
         let end = start.addingTimeInterval(83 * 60)
         let status = StatusText(isActive: true, remaining: .seconds(83 * 60), endDate: end, startDate: start)
-        let until = end.formatted(date: .omitted, time: .shortened)
+        let until = RemainingFormat.clock(end)
         #expect(status.title == "Éveillé, encore 1 h 23")
         #expect(status.subtitle == "jusqu'à \(until)")
         #expect(status.spoken == "Éveillé encore \(RemainingFormat.accessible(.seconds(83 * 60))), jusqu'à \(until)")

@@ -61,8 +61,8 @@ nonisolated enum CupGlyph {
     }
 }
 
-private extension NSBezierPath {
-    nonisolated func curve(to end: NSPoint, quadControl control: NSPoint) {
+extension NSBezierPath {
+    fileprivate nonisolated func curve(to end: NSPoint, quadControl control: NSPoint) {
         let start = currentPoint
         curve(
             to: end,

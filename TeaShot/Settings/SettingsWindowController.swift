@@ -2,14 +2,18 @@ import SwiftUI
 
 /// The Réglages window: native toolbar tabs hosting the SwiftUI forms.
 final class SettingsWindowController: NSWindowController {
+    private let launchAtLogin: LaunchAtLogin
+
     init(model: AppModel) {
+        launchAtLogin = model.launchAtLogin
         let tabs = NSTabViewController()
         tabs.tabStyle = .toolbar
-        tabs.addTabViewItem(Self.tab(
-            GeneralSettings(settings: model.settings, launchAtLogin: model.launchAtLogin),
-            label: "Général",
-            symbol: "gearshape"
-        ))
+        tabs.addTabViewItem(
+            Self.tab(
+                GeneralSettings(settings: model.settings, launchAtLogin: model.launchAtLogin),
+                label: "Général",
+                symbol: "gearshape"
+            ))
         tabs.addTabViewItem(Self.tab(AboutView(), label: "À propos", symbol: "info.circle"))
 
         let window = NSWindow(contentViewController: tabs)
@@ -26,6 +30,7 @@ final class SettingsWindowController: NSWindowController {
     }
 
     func present() {
+        launchAtLogin.refresh()
         NSApp.activate()
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
@@ -51,10 +56,12 @@ private struct GeneralSettings: View {
     var body: some View {
         Form {
             Section("Démarrage") {
-                Toggle("Lancer à l'ouverture de session", isOn: Binding(
-                    get: { launchAtLogin.isEnabled },
-                    set: { launchAtLogin.setEnabled($0) }
-                ))
+                Toggle(
+                    "Lancer à l'ouverture de session",
+                    isOn: Binding(
+                        get: { launchAtLogin.isEnabled },
+                        set: { launchAtLogin.setEnabled($0) }
+                    ))
                 Picker(selection: $settings.defaultDuration) {
                     Text("Sans limite").tag(Duration?.none)
                     ForEach(SleepGuard.presets, id: \.self) { preset in

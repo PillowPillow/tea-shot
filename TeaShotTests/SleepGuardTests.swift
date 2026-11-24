@@ -1,6 +1,7 @@
 import Foundation
 import IOKit.pwr_mgt
 import Testing
+
 @testable import TeaShot
 
 @Suite(.serialized)
@@ -19,11 +20,23 @@ struct SleepGuardTests {
 
     @Test func activateHoldsOnlyTheConfiguredKinds() {
         let sleepGuard = SleepGuard()
-        sleepGuard.kinds = [.preventIdleSystemSleep, .preventDisplaySleep]
+        sleepGuard.use([.preventIdleSystemSleep, .preventDisplaySleep])
         sleepGuard.activate()
         defer { sleepGuard.deactivate() }
 
         #expect(heldAssertionTypes() == ["PreventUserIdleSystemSleep", "PreventUserIdleDisplaySleep"])
+    }
+
+    @Test func activateHoldingKindsReplacesTheCurrentSession() {
+        let sleepGuard = SleepGuard()
+        sleepGuard.activate()
+        defer { sleepGuard.deactivate() }
+
+        sleepGuard.activate(for: .seconds(60), holding: [.preventIdleSystemSleep])
+
+        #expect(sleepGuard.kinds == [.preventIdleSystemSleep])
+        #expect(sleepGuard.endDate != nil)
+        #expect(heldAssertionTypes() == ["PreventUserIdleSystemSleep"])
     }
 
     @Test func changingKindsWhileActiveUpdatesHeldAssertions() {
@@ -31,10 +44,48 @@ struct SleepGuardTests {
         sleepGuard.activate()
         defer { sleepGuard.deactivate() }
 
-        sleepGuard.kinds = [.preventIdleSystemSleep]
+        sleepGuard.use([.preventIdleSystemSleep])
 
         #expect(sleepGuard.isActive)
         #expect(heldAssertionTypes() == ["PreventUserIdleSystemSleep"])
+    }
+
+    @Test func failedKindsChangeKeepsTheSessionOnItsCurrentAssertions() {
+        let sleepGuard = SleepGuard(makeAssertion: failing(.preventDiskIdle))
+        sleepGuard.activate(holding: [.preventIdleSystemSleep])
+        defer { sleepGuard.deactivate() }
+
+        sleepGuard.use([.preventIdleSystemSleep, .preventDiskIdle])
+
+        #expect(sleepGuard.isActive)
+        #expect(sleepGuard.kinds == [.preventIdleSystemSleep])
+        #expect(sleepGuard.failure?.kind == .preventDiskIdle)
+        #expect(heldAssertionTypes() == ["PreventUserIdleSystemSleep"])
+    }
+
+    @Test func failedRestartKeepsTheCurrentTimer() throws {
+        let sleepGuard = SleepGuard(makeAssertion: failing(.preventDiskIdle))
+        sleepGuard.activate(for: .seconds(600), holding: [.preventIdleSystemSleep])
+        defer { sleepGuard.deactivate() }
+        let end = try #require(sleepGuard.endDate)
+
+        sleepGuard.activate(for: .seconds(60), holding: [.preventIdleSystemSleep, .preventDiskIdle])
+
+        #expect(sleepGuard.isActive)
+        #expect(sleepGuard.endDate == end)
+        #expect(sleepGuard.failure != nil)
+        #expect(heldAssertionTypes() == ["PreventUserIdleSystemSleep"])
+    }
+
+    @Test func undoingAFailedChangeClearsTheError() {
+        let sleepGuard = SleepGuard(makeAssertion: failing(.preventDiskIdle))
+        sleepGuard.activate(holding: [.preventIdleSystemSleep])
+        defer { sleepGuard.deactivate() }
+
+        sleepGuard.use([.preventIdleSystemSleep, .preventDiskIdle])
+        sleepGuard.use([.preventIdleSystemSleep])
+
+        #expect(sleepGuard.failure == nil)
     }
 
     @Test func deactivateReleasesAssertions() {
@@ -124,10 +175,19 @@ struct SleepGuardTests {
 
 private let allTypes = Set(PowerAssertionKind.allCases.map(\.rawValue))
 
+private func failing(
+    _ failingKind: PowerAssertionKind
+) -> (PowerAssertionKind) throws(PowerAssertionError) -> PowerAssertion {
+    { kind throws(PowerAssertionError) in
+        guard kind != failingKind else { throw PowerAssertionError(kind: kind, code: kIOReturnError) }
+        return try PowerAssertion(kind, reason: "TeaShot tests")
+    }
+}
+
 private func heldAssertionTypes() -> Set<String> {
     var byProcess: Unmanaged<CFDictionary>?
     guard IOPMCopyAssertionsByProcess(&byProcess) == kIOReturnSuccess,
-          let all = byProcess?.takeRetainedValue() as? [NSNumber: [[String: Any]]]
+        let all = byProcess?.takeRetainedValue() as? [NSNumber: [[String: Any]]]
     else { return [] }
 
     let mine = all[NSNumber(value: ProcessInfo.processInfo.processIdentifier)] ?? []

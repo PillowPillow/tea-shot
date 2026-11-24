@@ -4,18 +4,48 @@ on:
   push:
     tags: ["v*"]
 
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
-  release:
-    runs-on: macos-26
+  build:
+    runs-on: xcode-27
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - name: Check the tag is a version
+        run: |
+          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Tag $GITHUB_REF_NAME is not vX.Y.Z" >&2; exit 1; }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - run: make test
-      - name: Build universal app
+      - name: Build the universal app
         run: make zip XCFLAGS="MARKETING_VERSION=${GITHUB_REF_NAME#v} CURRENT_PROJECT_VERSION=${GITHUB_RUN_NUMBER}"
-      - name: Publish release
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: TeaShot
+          path: build/TeaShot.zip
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: TeaShot
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: TeaShot.zip
+      - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" build/TeaShot.zip --title "TeaShot ${GITHUB_REF_NAME#v}" --generate-notes
+        run: >
+          gh release create "$GITHUB_REF_NAME" TeaShot.zip
+          --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes
+          --title "TeaShot ${GITHUB_REF_NAME#v}"

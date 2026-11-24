@@ -21,15 +21,18 @@ struct Theme {
 }
 
 let themes = [
-    Theme(name: "light", background: 0xF6F3EA, border: 0xE4DFD0, text: 0x1C2119, secondary: 0x4A5145,
-          accent: 0x4F7D2F, stroke: 0x2E5A2F, glass: 0.08, teaTop: 0xC9E28A, teaBottom: 0x9CC46B),
-    Theme(name: "dark", background: 0x1B2219, border: 0x2E3A2B, text: 0xF2F4EE, secondary: 0xB7BFB0,
-          accent: 0x9CC46B, stroke: 0xF2F4EE, glass: 0.10, teaTop: 0xDDEDAA, teaBottom: 0xB0D06C),
+    Theme(
+        name: "light", background: 0xF6F3EA, border: 0xE4DFD0, text: 0x1C2119, secondary: 0x4A5145,
+        accent: 0x4F7D2F, stroke: 0x2E5A2F, glass: 0.08, teaTop: 0xC9E28A, teaBottom: 0x9CC46B),
+    Theme(
+        name: "dark", background: 0x1B2219, border: 0x2E3A2B, text: 0xF2F4EE, secondary: 0xB7BFB0,
+        accent: 0x9CC46B, stroke: 0xF2F4EE, glass: 0.10, teaTop: 0xDDEDAA, teaBottom: 0xB0D06C),
 ]
 
 func color(_ hex: UInt32, _ alpha: CGFloat = 1) -> NSColor {
-    NSColor(srgbRed: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,
-            blue: CGFloat(hex & 0xFF) / 255, alpha: alpha)
+    NSColor(
+        srgbRed: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,
+        blue: CGFloat(hex & 0xFF) / 255, alpha: alpha)
 }
 
 func render(_ name: String, width: Double, height: Double, draw: (CGContext) -> Void) throws {
@@ -110,8 +113,9 @@ func glassCup(_ context: CGContext, _ theme: Theme, x: Double, y: Double, scale:
         context.saveGState()
         context.addPath(interior)
         context.clip()
-        let gradient = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB),
-                                  colors: [color(theme.teaTop).cgColor, color(theme.teaBottom).cgColor] as CFArray, locations: [0, 1])!
+        let gradient = CGGradient(
+            colorsSpace: CGColorSpace(name: CGColorSpace.sRGB),
+            colors: [color(theme.teaTop).cgColor, color(theme.teaBottom).cgColor] as CFArray, locations: [0, 1])!
         context.clip(to: CGRect(x: 0, y: surface, width: 100, height: 100))
         context.drawLinearGradient(gradient, start: CGPoint(x: 0, y: surface), end: CGPoint(x: 0, y: 80), options: [.drawsAfterEndLocation])
         context.restoreGState()
@@ -177,12 +181,14 @@ let levels = [1.0, 0.75, 0.5, 0.25, 0.0]
 for theme in themes {
     try render("hero-\(theme.name).png", width: 1280, height: 400) { context in
         card(context, theme, width: 1280, height: 400, radius: 32)
-        icon.draw(in: NSRect(x: 56, y: 92, width: 216, height: 216), from: .zero, operation: .sourceOver, fraction: 1,
-                  respectFlipped: true, hints: [.interpolation: NSImageInterpolation.high.rawValue])
+        icon.draw(
+            in: NSRect(x: 56, y: 92, width: 216, height: 216), from: .zero, operation: .sourceOver, fraction: 1,
+            respectFlipped: true, hints: [.interpolation: NSImageInterpolation.high.rawValue])
         text("MACOS MENU BAR APP", x: 300, y: 118, font: .systemFont(ofSize: 15, weight: .semibold), color: color(theme.accent), kern: 1.4)
         text("TeaShot", x: 296, y: 138, font: .systemFont(ofSize: 84, weight: .bold), color: color(theme.text), kern: -2.2)
-        text("Keep your Mac awake while your agents work.", x: 300, y: 248,
-             font: .systemFont(ofSize: 24, weight: .regular), color: color(theme.secondary))
+        text(
+            "Keep your Mac awake while your agents work.", x: 300, y: 248,
+            font: .systemFont(ofSize: 24, weight: .regular), color: color(theme.secondary))
 
         let scale = 1.2
         let pitch = 74.0
@@ -209,7 +215,9 @@ for theme in themes {
             if let time {
                 text(time, x: left + glyphWidth + 6, y: 51, font: font, color: color(theme.text))
             }
-            text(labels[index], x: centre, y: 116, font: .systemFont(ofSize: 17, weight: .medium), color: color(theme.secondary), centered: true)
+            text(
+                labels[index], x: centre, y: 116, font: .systemFont(ofSize: 17, weight: .medium), color: color(theme.secondary),
+                centered: true)
         }
     }
 }

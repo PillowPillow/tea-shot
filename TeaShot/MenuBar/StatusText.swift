@@ -14,12 +14,12 @@ nonisolated struct StatusText: Equatable {
             return
         }
         if let remaining, let endDate {
-            let until = "jusqu'à \(endDate.formatted(date: .omitted, time: .shortened))"
+            let until = "jusqu'à \(RemainingFormat.clock(endDate))"
             title = "Éveillé, encore \(RemainingFormat.spoken(remaining))"
             subtitle = until
             spoken = "Éveillé encore \(RemainingFormat.accessible(remaining)), \(until)"
         } else {
-            let since = startDate.map { "depuis \($0.formatted(date: .omitted, time: .shortened))" }
+            let since = startDate.map { "depuis \(RemainingFormat.clock($0))" }
             title = "Éveillé, sans limite"
             subtitle = since
             spoken = ["Éveillé sans limite", since].compactMap(\.self).joined(separator: ", ")

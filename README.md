@@ -27,7 +27,7 @@ curl -fsSL https://raw.githubusercontent.com/PillowPillow/tea-shot/main/install.
 
 It downloads the latest release, installs it in `/Applications` (or `~/Applications` if that folder is not writable) and launches it. Run the same line again to update.
 
-> **Why a script?** TeaShot is free and is not notarized by Apple, which requires a paid developer account. Files downloaded with `curl` are not quarantined, so the app opens without the Gatekeeper warning. The script is short and readable: [read `install.sh`](install.sh) before you run it.
+> **Why a script?** TeaShot is free and is not notarized by Apple, which requires a paid developer account. Files downloaded with `curl` are not quarantined, so the app opens without the Gatekeeper warning. The script is short and readable: [read `install.sh`](install.sh) before you run it. It checks that the download is complete and undamaged, and refuses to run with `sudo`. If the [GitHub CLI](https://cli.github.com) is installed and signed in, it also verifies that the zip was built by this repository's release workflow.
 
 TeaShot requires macOS 14 Sonoma or later and runs on Apple silicon and Intel Macs.
 
@@ -38,12 +38,19 @@ TeaShot requires macOS 14 Sonoma or later and runs on Apple silicon and Intel Ma
 2. Unzip it and drag TeaShot to your Applications folder.
 3. Open TeaShot. macOS blocks the first launch: open **System Settings → Privacy & Security** and click **Open Anyway**. You only do this once.
 
+Every release zip is built by GitHub Actions from a tagged commit and carries a signed build provenance attestation. To check that your download came from this repository's release workflow, with the [GitHub CLI](https://cli.github.com) signed in:
+
+```sh
+gh attestation verify TeaShot.zip --repo PillowPillow/tea-shot \
+  --signer-workflow PillowPillow/tea-shot/.github/workflows/release.yml
+```
+
 </details>
 
 <details>
 <summary><strong>Build from source</strong></summary>
 
-You need Xcode 26 or later. No Apple account is needed: builds are signed to run locally.
+You need Xcode 27 or later. No Apple account is needed: builds are signed to run locally.
 
 ```sh
 git clone https://github.com/PillowPillow/tea-shot.git
@@ -57,10 +64,10 @@ make install
 
 ## Features
 
-- **Awake with no limit, or for a set time.** Press <kbd>⌘E</kbd> to start, or choose 30 minutes, 1, 2, 4, 8 or 12 hours. You choose what <kbd>⌘E</kbd> starts in Settings.
-- **Extend or stop at any time.** <kbd>⌘+</kbd> adds 30 minutes to the running timer.
+- **Awake with no limit, or for a set time.** Click the cup and choose **Garder éveillé** (keep awake, <kbd>⌘E</kbd> while the menu is open), or pick 30 minutes, 1, 2, 4, 8 or 12 hours. You choose what it starts in Settings.
+- **Extend or stop at any time.** **Prolonger de 30 min** (extend by 30 min, <kbd>⌘+</kbd> in the menu) adds time to the running timer.
 - **A cup that drains.** The menu bar icon is a glass shot cup of green tea. It empties in five steps as the timer runs out, with the remaining time next to it. You can turn the time off.
-- **A reminder before the end.** An optional notification arrives 1, 5 or 10 minutes before the timer ends, with an **Extend by 30 min** button.
+- **A reminder before the end.** An optional notification arrives 1, 5 or 10 minutes before the timer ends, with a **Prolonger de 30 min** (extend by 30 min) button.
 - **Launch at login**, if you want TeaShot always at hand.
 
 <p align="center">
@@ -84,9 +91,9 @@ TeaShot creates the same IOKit power assertions as `caffeinate`, directly, with 
 | Assertion | `caffeinate` flag | Setting |
 | --- | --- | --- |
 | `PreventUserIdleSystemSleep` | `-i` | Always on |
-| `PreventUserIdleDisplaySleep` | `-d` | Keep display on |
-| `PreventDiskIdle` | `-m` | Keep disk awake |
-| `PreventSystemSleep` | `-s` | Block system sleep on AC power |
+| `PreventUserIdleDisplaySleep` | `-d` | Garder l'écran allumé (keep display on) |
+| `PreventDiskIdle` | `-m` | Garder le disque actif (keep disk awake) |
+| `PreventSystemSleep` | `-s` | Bloquer la veille système sur secteur (block system sleep on AC power) |
 
 macOS releases the assertions automatically if TeaShot quits or crashes, so your Mac never stays stuck awake. To see them for yourself:
 
@@ -114,17 +121,28 @@ These limits come from macOS, not from TeaShot.
 
 ## Development
 
-TeaShot is a native Swift 6 app (AppKit and SwiftUI), built as a universal binary. The release zip is about 600 KB. You need Xcode 26 or later.
+TeaShot is a native Swift 6 app (AppKit and SwiftUI), built as a universal binary. The release zip is about 600 KB. You need Xcode 27 or later.
 
 | Command | Effect |
 | --- | --- |
 | `make test` | Runs the Swift Testing suite |
+| `make lint` | Checks formatting with `swift format` (run by CI) |
+| `make format` | Formats the sources in place |
 | `make run` | Builds a Release build and launches it |
 | `make install` | Installs the app in `/Applications` and launches it |
 | `make uninstall` | Quits the app and deletes it |
 | `make zip` | Builds `build/TeaShot.zip` |
 
-**Architecture.** `AppModel` coordinates `SleepGuard` (assertions and timer), `AppSettings` (UserDefaults) and `TimerReminder` (notifications). `StatusItemController` owns the menu bar item and its menu in AppKit. `SettingsWindowController` hosts the SwiftUI settings.
+**Architecture.** Sources are grouped by feature under `TeaShot/`:
+
+| Folder | Contents |
+| --- | --- |
+| `App/` | `AppDelegate` (entry point) and `AppModel`, which coordinates the features |
+| `SleepGuard/` | `PowerAssertion` (IOKit wrapper) and `SleepGuard` (assertions and timer) |
+| `MenuBar/` | `StatusItemController` (AppKit menu bar item and menu), `CupGlyph`, `StatusText` |
+| `Settings/` | `AppSettings` (UserDefaults), `LaunchAtLogin` (`SMAppService`), `SettingsWindowController` (SwiftUI forms) |
+| `Reminder/` | `TimerReminder` (end-of-timer notification) |
+| `Shared/` | `RemainingFormat` (durations and times) |
 
 **Adding files.** The project uses synchronized folders: a file added under `TeaShot/` or `TeaShotTests/` compiles without a change to the `.xcodeproj`.
 
@@ -136,7 +154,9 @@ swift Tools/render-app-icon.swift TeaShot/Assets.xcassets/AppIcon.appiconset/ico
 
 **README visuals.** Regenerate the images in `docs/brand/` with `swift docs/brand/render-brand.swift .`
 
-**Releases.** Pushing a tag `vX.Y.Z` triggers a GitHub Actions workflow that runs the tests, builds the universal zip and publishes the GitHub release.
+**Releases.** Pushing a tag `vX.Y.Z` triggers a GitHub Actions workflow. A read-only job runs the tests and builds the universal zip; a second job attests its provenance and publishes the GitHub release.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) to propose a change and [SECURITY.md](SECURITY.md) to report a vulnerability.
 
 ## License
 
