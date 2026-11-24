@@ -163,16 +163,19 @@ struct TimerReminderTests {
     }
 }
 
+// One fixed suite, reset per test: macOS keeps an empty plist for every removed domain.
+@Suite(.serialized)
 struct AppSettingsTests {
-    private func freshDefaults() -> UserDefaults {
-        let name = "teashot.tests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: name)!
-        defaults.removePersistentDomain(forName: name)
-        return defaults
+    nonisolated private static let suiteName = "teashot.tests"
+    private let defaults: UserDefaults
+
+    init() {
+        defaults = UserDefaults(suiteName: Self.suiteName)!
+        defaults.removePersistentDomain(forName: Self.suiteName)
     }
 
     @Test func defaultsMatchTheDesign() {
-        let settings = AppSettings(defaults: freshDefaults())
+        let settings = AppSettings(defaults: defaults)
 
         #expect(settings.keepDisplayAwake)
         #expect(settings.keepDiskAwake)
@@ -186,7 +189,7 @@ struct AppSettingsTests {
     }
 
     @Test func idleSleepIsAlwaysPrevented() {
-        let settings = AppSettings(defaults: freshDefaults())
+        let settings = AppSettings(defaults: defaults)
         settings.keepDisplayAwake = false
         settings.keepDiskAwake = false
         settings.preventSystemSleep = false
@@ -195,7 +198,6 @@ struct AppSettingsTests {
     }
 
     @Test func valuesPersistAcrossInstances() {
-        let defaults = freshDefaults()
         let first = AppSettings(defaults: defaults)
         first.keepDisplayAwake = false
         first.defaultDuration = .seconds(7200)
