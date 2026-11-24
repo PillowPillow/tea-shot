@@ -67,9 +67,14 @@ struct AccessibleRemainingTests {
         #expect(RemainingFormat.preset(.seconds(7200), in: Localization(language)) == expected)
     }
 
-    @Test func clockUsesTheFrenchTwentyFourHourFormat() throws {
+    @Test(arguments: [
+        (AppLanguage.french, Locale.Region.france, "14:05"),
+        (.english, .france, "14:05"),
+        (.english, .unitedStates, "2:05\u{202F}PM"),
+    ])
+    func clockFollowsTheRegion(language: AppLanguage, region: Locale.Region, expected: String) throws {
         let afternoon = try #require(Calendar.current.date(from: DateComponents(year: 2026, month: 1, day: 2, hour: 14, minute: 5)))
-        #expect(RemainingFormat.clock(afternoon, in: french) == "14:05")
+        #expect(RemainingFormat.clock(afternoon, in: Localization(language, region: region)) == expected)
     }
 
     @Test func roundsUpLikeTheVisibleText() {

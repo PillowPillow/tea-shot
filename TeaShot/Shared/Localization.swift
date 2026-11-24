@@ -23,10 +23,10 @@ nonisolated enum AppLanguage: String, CaseIterable, Sendable {
 nonisolated struct Localization: Equatable, Sendable {
     let locale: Locale
 
-    init(_ language: AppLanguage) {
+    init(_ language: AppLanguage, region: Locale.Region? = Locale.current.region) {
         let code = language == .system ? Bundle.main.preferredLocalizations.first ?? "en" : language.rawValue
         // The user's region keeps their clock convention, such as 24-hour time with English text in France.
-        locale = Locale(components: Locale.Components(languageCode: Locale.LanguageCode(code), languageRegion: Locale.current.region))
+        locale = Locale(components: Locale.Components(languageCode: Locale.LanguageCode(code), languageRegion: region))
     }
 
     func callAsFunction(_ resource: LocalizedStringResource) -> String {
